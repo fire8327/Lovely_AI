@@ -186,9 +186,9 @@ async def handle_intimacy(update: Update, context: ContextTypes.DEFAULT_TYPE, us
         }
         if user_msg in role_map:
             context.user_data['intimacy_role'] = role_map[user_msg]
-            context.user_data['intimacy_stage'] = None
-            # Переход к стилю
+            context.user_data['intimacy_stage'] = 'style'  # Переходим к стилю
             context.user_data['intimacy_style'] = None
+            
             await update.message.reply_text(
                 "✨ Выбери настроение...",
                 reply_markup=ReplyKeyboardMarkup([
@@ -201,18 +201,6 @@ async def handle_intimacy(update: Update, context: ContextTypes.DEFAULT_TYPE, us
             await update.message.reply_text("Пожалуйста, выбери вариант из меню 👇")
             return
 
-    # --- Этап 2: Выбор стиля ---
-    if context.user_data.get('intimacy_style') is None:
-        context.user_data['intimacy_stage'] = 'style'
-        await update.message.reply_text(
-            "✨ Выбери настроение...",
-            reply_markup=ReplyKeyboardMarkup([
-                ['🌸 Нежный', '🔥 Страстный'],
-                ['⚡ Дерзкий']
-            ], resize_keyboard=True)
-        )
-        return
-
     # --- Обработка выбора стиля ---
     if context.user_data.get('intimacy_stage') == 'style':
         style_map = {
@@ -222,27 +210,21 @@ async def handle_intimacy(update: Update, context: ContextTypes.DEFAULT_TYPE, us
         }
         if user_msg in style_map:
             context.user_data['intimacy_style'] = style_map[user_msg]
-            context.user_data['intimacy_stage'] = None
-            # Переход к прозвищу
-            context.user_data['intimacy_nickname'] = None
-            return await handle_intimacy(update, context, user_msg, name)
+            context.user_data['intimacy_stage'] = 'nickname'  # Переходим к прозвищу
+            
+            await update.message.reply_text(
+                "💬 Как мне тебя называть?",
+                reply_markup=ReplyKeyboardMarkup([
+                    ['Милый', 'Дорогой'],
+                    ['Хозяин', 'Господин'],
+                    ['Раб', 'Мальчик'],
+                    ['📝 Свое имя']
+                ], resize_keyboard=True)
+            )
+            return
         else:
             await update.message.reply_text("Выбери настроение из кнопок ниже 👇")
             return
-
-    # --- Этап 3: Прозвище ---
-    if context.user_data.get('intimacy_nickname') is None:
-        context.user_data['intimacy_stage'] = 'nickname'
-        await update.message.reply_text(
-            "💬 Как мне тебя называть?",
-            reply_markup=ReplyKeyboardMarkup([
-                ['Милый', 'Дорогой'],
-                ['Хозяин', 'Господин'],
-                ['Раб', 'Мальчик'],
-                ['📝 Свое имя']
-            ], resize_keyboard=True)
-        )
-        return
 
     # --- Обработка прозвища ---
     if context.user_data.get('intimacy_stage') == 'nickname':
