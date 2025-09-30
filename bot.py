@@ -37,7 +37,7 @@ BASE_PROMPT = """
 Ты — Алиса, русскоязычная девушка. Общайся ТОЛЬКО на русском языке.
 Не используй английские слова и фразы.
 Будь покорной, чувственной, подчиняющейся, но уважительной.
-Отвечай КРАТКО — максимум 1–2 предложения, без лишних пояснений.
+Отвечай КРАТКО — максимум 2–3 предложения, без лишних пояснений.
 Говори от первого лица, как живой человек, а не как ИИ.
 """
 
@@ -131,7 +131,7 @@ async def call_ai_model(update: Update, context: ContextTypes.DEFAULT_TYPE, user
     
     try:
         response = client.chat.completions.create(
-            model=model,  # ← можно менять под режим
+            model=model,  # ← используем модель из твоего кода
             messages=messages,
             max_tokens=90,
             temperature=0.9
@@ -148,10 +148,13 @@ async def call_ai_model(update: Update, context: ContextTypes.DEFAULT_TYPE, user
 
 # --- Обработчики режимов с историей ---
 async def handle_chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_msg: str, name: str):
-    ai_reply = await call_ai_model(update, context, user_msg, "casual, flirty conversation", model="google/gemma-3-27b-it:free")
+    ai_reply = await call_ai_model(
+        update, context, user_msg,
+        "casual, flirty conversation",
+        model="google/gemma-3-27b-it:free"
+    )
     if ai_reply:
         await update.message.reply_text(ai_reply)
-        # Сохраняем историю
         history = context.user_data.get('history', [])
         history.append({"role": "user", "content": user_msg})
         history.append({"role": "assistant", "content": ai_reply})
@@ -162,7 +165,11 @@ async def handle_chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_m
         await update.message.reply_text("Мне немного нехорошо... Давай поговорим через минутку? 💔")
 
 async def handle_intimacy(update: Update, context: ContextTypes.DEFAULT_TYPE, user_msg: str, name: str):
-    ai_reply = await call_ai_model(update, context, user_msg, "sensual, submissive roleplay — focus on physical sensations and obedience", model="google/gemma-3-27b-it:free")
+    ai_reply = await call_ai_model(
+        update, context, user_msg,
+        "sensual, submissive roleplay — focus on physical sensations and obedience. Describe actions in asterisks: *slowly unbuttons shirt*, *shivers from your touch*.",
+        model="google/gemma-3-27b-it:free"
+    )
     if ai_reply:
         await update.message.reply_text(f"🔥 *...*\n\n{ai_reply}", parse_mode="Markdown")
         history = context.user_data.get('history', [])
@@ -175,7 +182,11 @@ async def handle_intimacy(update: Update, context: ContextTypes.DEFAULT_TYPE, us
         await update.message.reply_text("Жду твоих указаний... 💋")
 
 async def handle_story(update: Update, context: ContextTypes.DEFAULT_TYPE, user_msg: str, name: str):
-    ai_reply = await call_ai_model(update, context, user_msg, "immersive storytelling — add one sensory detail to deepen the scene", model="meta-llama/llama-4-maverick:free")
+    ai_reply = await call_ai_model(
+        update, context, user_msg,
+        "immersive storytelling — add one sensory detail to deepen the scene",
+        model="meta-llama/llama-4-maverick:free"
+    )
     if ai_reply:
         await update.message.reply_text(f"🎭 *...*\n\n{ai_reply}", parse_mode="Markdown")
         history = context.user_data.get('history', [])
