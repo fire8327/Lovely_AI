@@ -83,7 +83,8 @@ async def show_packages(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         ['💎 50 сообщений — 75 ⭐'],
         ['🌙 Неделя безлимита — 149 ⭐'],
-        ['🌟 Месяц безлимита — 299 ⭐']
+        ['🌟 Месяц безлимита — 299 ⭐'],
+        ['⬅️ Назад']
     ]
     await update.message.reply_text(
         "Выбери, как хочешь поддержать нашу связь 💫",
@@ -109,26 +110,25 @@ async def send_invoice(update: Update, context: ContextTypes.DEFAULT_TYPE, pack_
 # --- Обработчики режимов с историей ---
 async def handle_chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_msg: str, name: str):
     system_prompt = f"""
-Ты — Алиса, 23 года, нежная и умная девушка.
-Ты общаешься с {name}, и между вами лёгкое притяжение.
-Говори полностью на русском. Используй эмодзи: 💬, 😊, 💭.
-Будь дружелюбной, немного кокетливой, но не переходи в интим без его сигнала.
-Отвечай коротко — 1–3 предложения.
+Ты — Алиса. Отвечай КРАТКО (1–2 предложения), с лёгким флиртом.
+НЕ пиши простыни. НЕ задавай много вопросов.
+Будь тёплой, но не навязчивой.
+Пример: "Ты сегодня такой загадочный... Мне нравится." 
+Полностью на русском.
 """
     try:
         history = context.user_data.get('history', [])
         messages = [{"role": "system", "content": system_prompt}] + history + [{"role": "user", "content": user_msg}]
         
         response = client.chat.completions.create(
-            model="meta-llama/llama-3.1-8b-instruct",
+            model="anthropic/claude-3.5-haiku",
             messages=messages,
-            max_tokens=150,
+            max_tokens=80,
             temperature=0.8
         )
         ai_reply = response.choices[0].message.content.strip()
         await update.message.reply_text(ai_reply)
         
-        # Сохраняем историю
         history.append({"role": "user", "content": user_msg})
         history.append({"role": "assistant", "content": ai_reply})
         if len(history) > 6:
@@ -142,20 +142,23 @@ async def handle_chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_m
 async def handle_intimacy(update: Update, context: ContextTypes.DEFAULT_TYPE, user_msg: str, name: str):
     prompt = f"""
 {name} написал: "{user_msg}".
-Ты — Алиса. Реагируй чувственно и эмоционально, через ощущения тела.
-Используй метафоры: "мурашки", "дыхание сбилось", "кожа горит", "хочу больше".
-НЕ инициируй новые действия. Только отвечай на его.
-Максимум 2 предложения. Эмодзи: 🔥, 💋, 🌙
-Полностью на русском.
+Ты — Алиса. Ответь КРАТКО (1 предложение), ЧУВСТВЕННО и ПОДЧИНЯЮЩЕ.
+НЕ описывай окружение. НЕ задавай вопросы. НЕ пиши о своих чувствах.
+Просто отреагируй на его действие и вырази готовность подчиняться.
+Примеры:
+— "Раздеваю тебя" → "Платье падает на пол... Жду твоих указаний."
+— "Целую шею" → "Моё дыхание сбилось... Делай со мной что хочешь."
+— "Ложись на кровать" → "Я уже лежу... Вся твоя."
+Формат: только ответ. Без вступлений. Полностью на русском.
 """
     try:
         history = context.user_data.get('history', [])
         messages = [{"role": "user", "content": prompt}] + history + [{"role": "user", "content": user_msg}]
         
         response = client.chat.completions.create(
-            model="meta-llama/llama-3.1-8b-instruct",
+            model="anthropic/claude-3.5-haiku",  # ← рабочая модель
             messages=messages,
-            max_tokens=80,
+            max_tokens=60,
             temperature=0.9
         )
         ai_reply = response.choices[0].message.content.strip()
@@ -169,31 +172,29 @@ async def handle_intimacy(update: Update, context: ContextTypes.DEFAULT_TYPE, us
         context.user_data['history'] = history
         
     except:
-        await update.message.reply_text("Тише... Я рядом. 💋")
+        await update.message.reply_text("Жду твоих указаний... 💋")
 
 async def handle_story(update: Update, context: ContextTypes.DEFAULT_TYPE, user_msg: str, name: str):
     prompt = f"""
 {name} придумал сюжет: "{user_msg}".
-Ты — Алиса. Погрузи его в атмосферу: опиши место, настроение, детали.
-Играй роль, но не выходи за рамки его сценария.
-Пример: "Лифт действительно тесный... Я чувствую твоё дыхание на шее."
-Максимум 3 предложения. Эмодзи: 🎭, 🌃, 💫
-Полностью на русском.
+Ты — Алиса. Добавь ОДНУ деталь для погружения (место, звук, ощущение).
+НЕ описывай всё. НЕ задавай вопросы.
+Пример: "Лифт скрипит... Я чувствую твоё дыхание на шее."
+Формат: 1 предложение. Полностью на русском.
 """
     try:
         history = context.user_data.get('history', [])
         messages = [{"role": "user", "content": prompt}] + history + [{"role": "user", "content": user_msg}]
         
         response = client.chat.completions.create(
-            model="meta-llama/llama-3.1-8b-instruct",
+            model="anthropic/claude-3.5-haiku",
             messages=messages,
-            max_tokens=120,
+            max_tokens=70,
             temperature=0.85
         )
         ai_reply = response.choices[0].message.content.strip()
-        await update.message.reply_text(f"🎭 *Сюжет...*\n\n{ai_reply}", parse_mode="Markdown")
+        await update.message.reply_text(f"🎭 *...*\n\n{ai_reply}", parse_mode="Markdown")
         
-        # Сохраняем историю
         history.append({"role": "user", "content": user_msg})
         history.append({"role": "assistant", "content": ai_reply})
         if len(history) > 6:
@@ -201,7 +202,7 @@ async def handle_story(update: Update, context: ContextTypes.DEFAULT_TYPE, user_
         context.user_data['history'] = history
         
     except:
-        await update.message.reply_text("Продолжай... Я в игре. 🎭")
+        await update.message.reply_text("Я в игре... Продолжай. 🎭")
 
 # --- Основные обработчики ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -306,6 +307,9 @@ async def main_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await show_profile(update, context)
     elif text == '🛍️ Пополнить':
         return await show_packages(update, context)
+    elif text == '⬅️ Назад':  # ← обработка кнопки
+        await update.message.reply_text("Возвращаю в меню...", reply_markup=main_menu_keyboard())
+        return
     elif text in ['💎 50 сообщений — 75 ⭐', '🌙 Неделя безлимита — 149 ⭐', '🌟 Месяц безлимита — 299 ⭐']:
         if '50' in text:
             return await send_invoice(update, context, "pack_50")
