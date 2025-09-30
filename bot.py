@@ -121,7 +121,7 @@ async def handle_chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_m
         messages = [{"role": "system", "content": system_prompt}] + history + [{"role": "user", "content": user_msg}]
         
         response = client.chat.completions.create(
-            model="anthropic/claude-3.5-haiku",
+            model="meta-llama/llama-3.1-70b-instruct",
             messages=messages,
             max_tokens=80,
             temperature=0.8
