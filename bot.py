@@ -175,7 +175,7 @@ async def handle_intimacy(update: Update, context: ContextTypes.DEFAULT_TYPE, us
             "• 🌙 *Мы равны* — нежность и страсть",
             parse_mode="Markdown",
             reply_markup=ReplyKeyboardMarkup([
-                ['🙈 Я подчиняюсь тебе'],
+                ['🩷 Я подчиняюсь тебе'],
                 ['💎 Ты подчиняешься мне'],
                 ['🌙 Мы равны']
             ], resize_keyboard=True)
@@ -229,7 +229,7 @@ async def handle_intimacy(update: Update, context: ContextTypes.DEFAULT_TYPE, us
     # --- Обработка выбора на этапах ---
     if context.user_data.get('intimacy_stage') == 'role':
         role_map = {
-            '🙈 Я подчиняюсь тебе': 'submissive',
+            '🩷 Я подчиняюсь тебе': 'submissive',
             '💎 Ты подчиняешься мне': 'dominant',
             '🌙 Мы равны': 'equal'
         }
@@ -402,10 +402,15 @@ async def main_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     elif text == '🔥 Виртуальная близость':
         context.user_data['mode'] = 'intimacy'
-        await update.message.reply_text(
-            "Я с тобой... Делай, что хочешь. 🔥\n"
-            "(Пиши действия: *раздеваю тебя*, *целую губы*, *ты лежишь подо мной*...)"
-        )
+        # Сбрасываем настройки близости для новой сессии
+        context.user_data['intimacy_role'] = None
+        context.user_data['intimacy_style'] = None
+        context.user_data['intimacy_nickname'] = None
+        context.user_data['intimacy_stage'] = None
+        
+        # ЗАПУСКАЕМ ПРОЦЕСС НАСТРОЙКИ СРАЗУ
+        name = context.user_data.get('name', 'любимый')
+        await handle_intimacy(update, context, "", name)  # Пустое сообщение для запуска
         return
     elif text == '🎭 Сюжет':
         context.user_data['mode'] = 'story'
