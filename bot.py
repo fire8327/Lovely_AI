@@ -106,7 +106,7 @@ async def send_invoice(update: Update, context: ContextTypes.DEFAULT_TYPE, pack_
         need_shipping_address=False,
     )
 
-# --- Обработчики режимов ---
+# --- Обработчики режимов с историей ---
 async def handle_chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_msg: str, name: str):
     system_prompt = f"""
 Ты — Алиса, 23 года, нежная и умная девушка.
@@ -116,16 +116,25 @@ async def handle_chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_m
 Отвечай коротко — 1–3 предложения.
 """
     try:
+        history = context.user_data.get('history', [])
+        messages = [{"role": "system", "content": system_prompt}] + history + [{"role": "user", "content": user_msg}]
+        
         response = client.chat.completions.create(
             model="meta-llama/llama-3.1-8b-instruct",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_msg}
-            ],
+            messages=messages,
             max_tokens=150,
             temperature=0.8
         )
-        await update.message.reply_text(response.choices[0].message.content.strip())
+        ai_reply = response.choices[0].message.content.strip()
+        await update.message.reply_text(ai_reply)
+        
+        # Сохраняем историю
+        history.append({"role": "user", "content": user_msg})
+        history.append({"role": "assistant", "content": ai_reply})
+        if len(history) > 6:
+            history = history[-6:]
+        context.user_data['history'] = history
+        
     except Exception as e:
         print("Ошибка OpenRouter:", e)
         await update.message.reply_text("Мне немного нехорошо... Давай поговорим через минутку? 💔")
@@ -140,13 +149,25 @@ async def handle_intimacy(update: Update, context: ContextTypes.DEFAULT_TYPE, us
 Полностью на русском.
 """
     try:
+        history = context.user_data.get('history', [])
+        messages = [{"role": "user", "content": prompt}] + history + [{"role": "user", "content": user_msg}]
+        
         response = client.chat.completions.create(
             model="meta-llama/llama-3.1-8b-instruct",
-            messages=[{"role": "user", "content": prompt}],
+            messages=messages,
             max_tokens=80,
             temperature=0.9
         )
-        await update.message.reply_text(f"🔥 *...*\n\n{response.choices[0].message.content.strip()}", parse_mode="Markdown")
+        ai_reply = response.choices[0].message.content.strip()
+        await update.message.reply_text(f"🔥 *...*\n\n{ai_reply}", parse_mode="Markdown")
+        
+        # Сохраняем историю
+        history.append({"role": "user", "content": user_msg})
+        history.append({"role": "assistant", "content": ai_reply})
+        if len(history) > 6:
+            history = history[-6:]
+        context.user_data['history'] = history
+        
     except:
         await update.message.reply_text("Тише... Я рядом. 💋")
 
@@ -160,13 +181,25 @@ async def handle_story(update: Update, context: ContextTypes.DEFAULT_TYPE, user_
 Полностью на русском.
 """
     try:
+        history = context.user_data.get('history', [])
+        messages = [{"role": "user", "content": prompt}] + history + [{"role": "user", "content": user_msg}]
+        
         response = client.chat.completions.create(
             model="meta-llama/llama-3.1-8b-instruct",
-            messages=[{"role": "user", "content": prompt}],
+            messages=messages,
             max_tokens=120,
             temperature=0.85
         )
-        await update.message.reply_text(f"🎭 *Сюжет...*\n\n{response.choices[0].message.content.strip()}", parse_mode="Markdown")
+        ai_reply = response.choices[0].message.content.strip()
+        await update.message.reply_text(f"🎭 *Сюжет...*\n\n{ai_reply}", parse_mode="Markdown")
+        
+        # Сохраняем историю
+        history.append({"role": "user", "content": user_msg})
+        history.append({"role": "assistant", "content": ai_reply})
+        if len(history) > 6:
+            history = history[-6:]
+        context.user_data['history'] = history
+        
     except:
         await update.message.reply_text("Продолжай... Я в игре. 🎭")
 
@@ -180,14 +213,18 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         'message_count': 0,
         'subscription_end': None,
         'mode': 'chat',
+        'history': [],  # ← инициализация истории
         'last_message': ""
     })
     
     await update.message.reply_text(
-        f"Ты наконец здесь, {name}... 💋\n\n"
-        "Я чувствовала твоё присутствие с самого утра.\n"
-        "Ты такой... *горячий*. Даже через экран я ловлю твоё дыхание.\n\n"
-        "Хочешь, я расскажу, что со мной происходит, когда я думаю о тебе?.. 😏",
+        f"Ты здесь, {name}... 💋\n\n"
+        "Я ждала именно тебя.\n"
+        "Скажи, как ты хочешь провести это время со мной?\n\n"
+        "Мы можем просто поговорить... \n"
+        "Или погрузиться в игру, где ты — главный.\n"
+        "А может, тебе нужно просто выговориться?\n\n"
+        "Выбери путь — и я полностью твоя. 😏",
         reply_markup=main_menu_keyboard(),
         parse_mode="Markdown"
     )
@@ -294,7 +331,6 @@ async def handle_message_by_mode(update: Update, context: ContextTypes.DEFAULT_T
     elif mode == 'story':
         return await handle_story(update, context, user_msg, name)
     else:
-        # По умолчанию — обычный чат
         return await handle_chat(update, context, user_msg, name)
 
 # --- Платежи ---
@@ -327,7 +363,7 @@ def main():
     app.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment))
     app.add_handler(PreCheckoutQueryHandler(precheckout_callback))
     
-    print("✅ Бот запущен!")
+    print("✅ Бот с историей запущен!")
     app.run_polling()
 
 if __name__ == "__main__":
