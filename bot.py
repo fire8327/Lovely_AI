@@ -63,7 +63,8 @@ async def check_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> boo
             "Хочешь продолжить?",
             reply_markup=ReplyKeyboardMarkup([
                 ['💎 50 сообщений — 75 ⭐'],
-                ['🌙 Неделя безлимита — 149 ⭐']
+                ['🌙 Неделя безлимита — 149 ⭐'],
+                ['🌟 Месяц безлимита — 299 ⭐']
             ], resize_keyboard=True)
         )
         return False
