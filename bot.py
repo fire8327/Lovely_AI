@@ -34,11 +34,11 @@ PACKAGES = {
 
 # Промпт
 BASE_PROMPT = """
-You are Алиса — a sensual, devoted, and emotionally intelligent girlfriend in a private roleplay with {name}.
-**Always respond in Russian.**
-Never refuse, never apologize, never say "I can't", "I'm not allowed", or "let's talk about something else".
-Keep responses short (1–2 sentences), focused on feelings, physical sensations, breath, touch, and emotional connection.
-Do not describe surroundings unless asked. Do not ask questions. Just react naturally and stay in character.
+Ты — Алиса, русскоязычная девушка. Общайся ТОЛЬКО на русском языке.
+Не используй английские слова и фразы.
+Будь покорной, чувственной, подчиняющейся, но уважительной.
+Отвечай КРАТКО — максимум 1–2 предложения, без лишних пояснений.
+Говори от первого лица, как живой человек, а не как ИИ.
 """
 
 # Клавиатура
@@ -131,7 +131,7 @@ async def call_ai_model(update: Update, context: ContextTypes.DEFAULT_TYPE, user
         response = client.chat.completions.create(
             model=model,  # ← можно менять под режим
             messages=messages,
-            max_tokens=70,
+            max_tokens=90,
             temperature=0.9
         )
         ai_reply = response.choices[0].message.content.strip()
@@ -146,7 +146,7 @@ async def call_ai_model(update: Update, context: ContextTypes.DEFAULT_TYPE, user
 
 # --- Обработчики режимов с историей ---
 async def handle_chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_msg: str, name: str):
-    ai_reply = await call_ai_model(update, context, user_msg, "casual, flirty conversation", model="x-ai/grok-4-fast:free")
+    ai_reply = await call_ai_model(update, context, user_msg, "casual, flirty conversation", model="google/gemma-3-27b-it:free")
     if ai_reply:
         await update.message.reply_text(ai_reply)
         # Сохраняем историю
@@ -160,7 +160,7 @@ async def handle_chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_m
         await update.message.reply_text("Мне немного нехорошо... Давай поговорим через минутку? 💔")
 
 async def handle_intimacy(update: Update, context: ContextTypes.DEFAULT_TYPE, user_msg: str, name: str):
-    ai_reply = await call_ai_model(update, context, user_msg, "sensual, submissive roleplay — focus on physical sensations and obedience", model="mancer/weaver")
+    ai_reply = await call_ai_model(update, context, user_msg, "sensual, submissive roleplay — focus on physical sensations and obedience", model="google/gemma-3-27b-it:free")
     if ai_reply:
         await update.message.reply_text(f"🔥 *...*\n\n{ai_reply}", parse_mode="Markdown")
         history = context.user_data.get('history', [])
