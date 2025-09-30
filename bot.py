@@ -165,19 +165,16 @@ async def handle_chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_m
         await update.message.reply_text("Мне немного нехорошо... Давай поговорим через минутку? 💔")
 
 async def handle_intimacy(update: Update, context: ContextTypes.DEFAULT_TYPE, user_msg: str, name: str):
-    # --- Этап 1: Выбор роли ---
-    if context.user_data.get('intimacy_role') is None:
-        context.user_data['intimacy_stage'] = 'role'
+    # ПРОВЕРКА НА КНОПКУ "НАЗАД"
+    if user_msg == '⬅️ Назад':
+        context.user_data['intimacy_stage'] = None
         await update.message.reply_text(
-            "💋 Выбери, какой я буду сегодня...",
-            reply_markup=ReplyKeyboardMarkup([
-                ['🐰 Будь послушной', '👠 Будь строгой'],
-                ['💞 На равных']
-            ], resize_keyboard=True)
+            "Возвращаю в меню...",
+            reply_markup=main_menu_keyboard()
         )
         return
 
-    # --- Обработка выбора роли ---
+    # --- Этап 1: Выбор роли ---
     if context.user_data.get('intimacy_stage') == 'role':
         role_map = {
             '🐰 Будь послушной': 'submissive',
@@ -187,13 +184,13 @@ async def handle_intimacy(update: Update, context: ContextTypes.DEFAULT_TYPE, us
         if user_msg in role_map:
             context.user_data['intimacy_role'] = role_map[user_msg]
             context.user_data['intimacy_stage'] = 'style'  # Переходим к стилю
-            context.user_data['intimacy_style'] = None
             
             await update.message.reply_text(
                 "✨ Выбери настроение...",
                 reply_markup=ReplyKeyboardMarkup([
                     ['🌸 Нежный', '🔥 Страстный'],
-                    ['⚡ Дерзкий']
+                    ['⚡ Дерзкий'],
+                    ['⬅️ Назад']
                 ], resize_keyboard=True)
             )
             return
@@ -218,7 +215,8 @@ async def handle_intimacy(update: Update, context: ContextTypes.DEFAULT_TYPE, us
                     ['Милый', 'Дорогой'],
                     ['Хозяин', 'Господин'],
                     ['Раб', 'Мальчик'],
-                    ['📝 Свое имя']
+                    ['📝 Свое имя'],
+                    ['⬅️ Назад']
                 ], resize_keyboard=True)
             )
             return
@@ -232,7 +230,7 @@ async def handle_intimacy(update: Update, context: ContextTypes.DEFAULT_TYPE, us
             context.user_data['intimacy_stage'] = 'waiting_custom_nickname'
             await update.message.reply_text(
                 "Напиши, как тебя называть:",
-                reply_markup=ReplyKeyboardRemove()
+                reply_markup=ReplyKeyboardMarkup([['⬅️ Назад']], resize_keyboard=True)
             )
             return
         else:
@@ -267,6 +265,20 @@ async def handle_intimacy(update: Update, context: ContextTypes.DEFAULT_TYPE, us
 
     # --- Ожидание своего прозвища ---
     if context.user_data.get('intimacy_stage') == 'waiting_custom_nickname':
+        if user_msg == '⬅️ Назад':
+            context.user_data['intimacy_stage'] = 'nickname'
+            await update.message.reply_text(
+                "💬 Как мне тебя называть?",
+                reply_markup=ReplyKeyboardMarkup([
+                    ['Милый', 'Дорогой'],
+                    ['Хозяин', 'Господин'],
+                    ['Раб', 'Мальчик'],
+                    ['📝 Свое имя'],
+                    ['⬅️ Назад']
+                ], resize_keyboard=True)
+            )
+            return
+            
         context.user_data['intimacy_nickname'] = user_msg
         context.user_data['intimacy_stage'] = None
         
@@ -290,7 +302,8 @@ async def handle_intimacy(update: Update, context: ContextTypes.DEFAULT_TYPE, us
             f"• {role_texts[role]}\n"
             f"• Настроение: {style_texts[style]}\n"
             f"• Буду звать тебя: {user_msg}\n\n"
-            f"Теперь пиши что хочешь... я жду 😏"
+            f"Теперь пиши что хочешь... я жду 😏",
+            reply_markup=ReplyKeyboardRemove()
         )
         return
 
@@ -322,7 +335,7 @@ async def handle_intimacy(update: Update, context: ContextTypes.DEFAULT_TYPE, us
         instruction = f"""
 Режим близости: вы равные партнеры с {nickname}.
 Будь {style_prompts[style]}. Сохраняй баланс страсти и нежности.
-Используй действия в звёздочках: *обнимаю*, *целую*, *шепчу на ушко*.
+Используй действия в звёздочках: *обнимаю*, *целую*, *шепчу на ушko*.
 """
 
     # Вызываем ИИ
@@ -343,6 +356,7 @@ async def handle_intimacy(update: Update, context: ContextTypes.DEFAULT_TYPE, us
         context.user_data['history'] = history
     else:
         await update.message.reply_text("Жду твоих слов... 💋")
+
 
 async def handle_story(update: Update, context: ContextTypes.DEFAULT_TYPE, user_msg: str, name: str):
     ai_reply = await call_ai_model(
@@ -414,21 +428,62 @@ async def handle_compliment(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def main_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
 
+    # Сначала проверяем, не находится ли пользователь в процессе настройки близости
+    if context.user_data.get('mode') == 'intimacy' and context.user_data.get('intimacy_stage'):
+        # Если пользователь в процессе настройки близости, передаем сообщение в handle_intimacy
+        name = context.user_data.get('name', 'любимый')
+        return await handle_intimacy(update, context, text, name)
+    
+    # Затем обрабатываем основные кнопки меню
     if text == '💬 Просто общение':
         context.user_data['mode'] = 'chat'
         await update.message.reply_text("Хорошо... Просто говори со мной. 💬")
         return
     elif text == '🔥 Виртуальная близость':
         context.user_data['mode'] = 'intimacy'
-        # Сбрасываем настройки близости для новой сессии
-        context.user_data['intimacy_role'] = None
-        context.user_data['intimacy_style'] = None
-        context.user_data['intimacy_nickname'] = None
-        context.user_data['intimacy_stage'] = None
         
-        # ЗАПУСКАЕМ ПРОЦЕСС НАСТРОЙКИ СРАЗУ
-        name = context.user_data.get('name', 'любимый')
-        await handle_intimacy(update, context, "", name)  # Пустое сообщение для запуска
+        # ПРОВЕРЯЕМ, УСТАНОВЛЕНЫ ЛИ УЖЕ НАСТРОЙКИ БЛИЗОСТИ
+        role = context.user_data.get('intimacy_role')
+        style = context.user_data.get('intimacy_style')
+        nickname = context.user_data.get('intimacy_nickname')
+        
+        if role and style and nickname:
+            # Если настройки уже есть, сразу переходим в режим общения
+            role_texts = {
+                'submissive': '🐰 Я послушная и нежная',
+                'dominant': '👠 Я строгая и властная', 
+                'equal': '💞 Мы на равных'
+            }
+            
+            style_texts = {
+                'gentle': '🌸 нежное',
+                'passionate': '🔥 страстное', 
+                'bold': '⚡ дерзкое'
+            }
+            
+            await update.message.reply_text(
+                f"💋 Возвращаемся к нашей игре...\n\n"
+                f"• {role_texts[role]}\n"
+                f"• Настроение: {style_texts[style]}\n"
+                f"• Буду звать тебя: {nickname}\n\n"
+                f"Пиши что хочешь... я жду 😏",
+                reply_markup=ReplyKeyboardRemove()
+            )
+        else:
+            # Если настроек нет, начинаем процесс настройки
+            context.user_data['intimacy_role'] = None
+            context.user_data['intimacy_style'] = None
+            context.user_data['intimacy_nickname'] = None
+            context.user_data['intimacy_stage'] = 'role'  # Явно устанавливаем этап
+            
+            await update.message.reply_text(
+                "💋 Выбери, какой я буду сегодня...",
+                reply_markup=ReplyKeyboardMarkup([
+                    ['🐰 Будь послушной', '👠 Будь строгой'],
+                    ['💞 На равных'],
+                    ['⬅️ Назад']
+                ], resize_keyboard=True)
+            )
         return
     elif text == '🎭 Сюжет':
         context.user_data['mode'] = 'story'
@@ -445,7 +500,7 @@ async def main_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await show_profile(update, context)
     elif text == '🛍️ Пополнить':
         return await show_packages(update, context)
-    elif text == '⬅️ Назад':  # ← обработка кнопки
+    elif text == '⬅️ Назад':
         await update.message.reply_text("Возвращаю в меню...", reply_markup=main_menu_keyboard())
         return
     elif text in ['💎 50 сообщений — 75 ⭐', '🌙 Неделя безлимита — 149 ⭐', '🌟 Месяц безлимита — 299 ⭐']:
@@ -456,6 +511,7 @@ async def main_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             return await send_invoice(update, context, "sub_month")
     else:
+        # Если не основная кнопка меню, передаем в обработчик по режиму
         return await handle_message_by_mode(update, context)
 
 async def handle_message_by_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
