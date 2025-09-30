@@ -169,85 +169,56 @@ async def handle_intimacy(update: Update, context: ContextTypes.DEFAULT_TYPE, us
     if context.user_data.get('intimacy_role') is None:
         context.user_data['intimacy_stage'] = 'role'
         await update.message.reply_text(
-            "💋 Как ты хочешь взаимодействовать со мной?\n\n"
-            "• 🩷 *Я подчиняюсь тебе* — ты управляешь мной\n"
-            "• 💎 *Ты подчиняешься мне* — я веду тебя\n"
-            "• 🌙 *Мы равны* — нежность и страсть",
-            parse_mode="Markdown",
+            "💋 Выбери, какой я буду сегодня...",
             reply_markup=ReplyKeyboardMarkup([
-                ['🩷 Я подчиняюсь тебе'],
-                ['💎 Ты подчиняешься мне'],
-                ['🌙 Мы равны']
+                ['🐰 Будь послушной', '👠 Будь строгой'],
+                ['💞 На равных']
             ], resize_keyboard=True)
         )
         return
 
-    # --- Этап 2: Выбор стиля ---
-    if context.user_data.get('intimacy_style') is None:
-        context.user_data['intimacy_stage'] = 'style'
-        await update.message.reply_text(
-            "🔥 Какой тон тебе нравится?\n\n"
-            "• 🌸 *Нежный* — ласковый, заботливый\n"
-            "• 🔥 *Страстный* — горячий, требовательный\n"
-            "• ⚡ *Грубый* — резкий, доминирующий",
-            parse_mode="Markdown",
-            reply_markup=ReplyKeyboardMarkup([
-                ['🌸 Нежный'],
-                ['🔥 Страстный'],
-                ['⚡ Грубый']
-            ], resize_keyboard=True)
-        )
-        return
-
-    # --- Этап 3: Выбор прозвища ---
-    if context.user_data.get('intimacy_nickname') is None:
-        context.user_data['intimacy_stage'] = 'nickname'
-        await update.message.reply_text(
-            "📛 Как мне тебя называть?\n"
-            "(Можешь выбрать или написать своё)\n\n"
-            "• Зайка • Любимый • Хозяин • Милый • Господин • Раб",
-            reply_markup=ReplyKeyboardMarkup([
-                ['Зайка', 'Любимый'],
-                ['Хозяин', 'Милый'],
-                ['Господин', 'Раб'],
-                ['Своё...']
-            ], resize_keyboard=True)
-        )
-        return
-
-    # --- Этап 4: Ввод своего прозвища ---
-    if context.user_data.get('intimacy_stage') == 'waiting_custom_nickname':
-        context.user_data['intimacy_nickname'] = user_msg
-        context.user_data['intimacy_stage'] = None
-        await update.message.reply_text(
-            f"Хорошо... Теперь я буду звать тебя «{user_msg}».\n"
-            "Пиши своё первое действие. 😏",
-            reply_markup=ReplyKeyboardRemove()
-        )
-        return
-
-    # --- Обработка выбора на этапах ---
+    # --- Обработка выбора роли ---
     if context.user_data.get('intimacy_stage') == 'role':
         role_map = {
-            '🩷 Я подчиняюсь тебе': 'submissive',
-            '💎 Ты подчиняешься мне': 'dominant',
-            '🌙 Мы равны': 'equal'
+            '🐰 Будь послушной': 'submissive',
+            '👠 Будь строгой': 'dominant',
+            '💞 На равных': 'equal'
         }
         if user_msg in role_map:
             context.user_data['intimacy_role'] = role_map[user_msg]
             context.user_data['intimacy_stage'] = None
             # Переход к стилю
             context.user_data['intimacy_style'] = None
-            return await handle_intimacy(update, context, user_msg, name)
+            await update.message.reply_text(
+                "✨ Выбери настроение...",
+                reply_markup=ReplyKeyboardMarkup([
+                    ['🌸 Нежный', '🔥 Страстный'],
+                    ['⚡ Дерзкий']
+                ], resize_keyboard=True)
+            )
+            return
         else:
-            await update.message.reply_text("Пожалуйста, выбери из меню.")
+            await update.message.reply_text("Пожалуйста, выбери вариант из меню 👇")
             return
 
+    # --- Этап 2: Выбор стиля ---
+    if context.user_data.get('intimacy_style') is None:
+        context.user_data['intimacy_stage'] = 'style'
+        await update.message.reply_text(
+            "✨ Выбери настроение...",
+            reply_markup=ReplyKeyboardMarkup([
+                ['🌸 Нежный', '🔥 Страстный'],
+                ['⚡ Дерзкий']
+            ], resize_keyboard=True)
+        )
+        return
+
+    # --- Обработка выбора стиля ---
     if context.user_data.get('intimacy_stage') == 'style':
         style_map = {
             '🌸 Нежный': 'gentle',
             '🔥 Страстный': 'passionate',
-            '⚡ Грубый': 'rough'
+            '⚡ Дерзкий': 'bold'
         }
         if user_msg in style_map:
             context.user_data['intimacy_style'] = style_map[user_msg]
@@ -256,66 +227,131 @@ async def handle_intimacy(update: Update, context: ContextTypes.DEFAULT_TYPE, us
             context.user_data['intimacy_nickname'] = None
             return await handle_intimacy(update, context, user_msg, name)
         else:
-            await update.message.reply_text("Пожалуйста, выбери из меню.")
+            await update.message.reply_text("Выбери настроение из кнопок ниже 👇")
             return
 
-    if user_msg == 'Своё...':
-        context.user_data['intimacy_stage'] = 'waiting_custom_nickname'
-        await update.message.reply_text("Напиши, как хочешь, чтобы я тебя звала:")
-        return
-
-    # Если прозвище ещё не установлено, но пользователь написал что-то вне меню — считаем это прозвищем
+    # --- Этап 3: Прозвище ---
     if context.user_data.get('intimacy_nickname') is None:
-        context.user_data['intimacy_nickname'] = user_msg
+        context.user_data['intimacy_stage'] = 'nickname'
         await update.message.reply_text(
-            f"Хорошо... Теперь я буду звать тебя «{user_msg}».\n"
-            "Пиши своё первое действие. 😏",
-            reply_markup=ReplyKeyboardRemove()
+            "💬 Как мне тебя называть?",
+            reply_markup=ReplyKeyboardMarkup([
+                ['Милый', 'Дорогой'],
+                ['Хозяин', 'Господин'],
+                ['Раб', 'Мальчик'],
+                ['📝 Свое имя']
+            ], resize_keyboard=True)
         )
         return
 
-    # --- Основной режим: генерация ответа с учётом всех настроек ---
+    # --- Обработка прозвища ---
+    if context.user_data.get('intimacy_stage') == 'nickname':
+        if user_msg == '📝 Свое имя':
+            context.user_data['intimacy_stage'] = 'waiting_custom_nickname'
+            await update.message.reply_text(
+                "Напиши, как тебя называть:",
+                reply_markup=ReplyKeyboardRemove()
+            )
+            return
+        else:
+            context.user_data['intimacy_nickname'] = user_msg
+            context.user_data['intimacy_stage'] = None
+            
+            # Все настройки готовы - показываем сводку
+            role = context.user_data['intimacy_role']
+            style = context.user_data['intimacy_style']
+            
+            role_texts = {
+                'submissive': '🐰 Я буду послушной и нежной',
+                'dominant': '👠 Я буду строгой и властной', 
+                'equal': '💞 Мы будем на равных'
+            }
+            
+            style_texts = {
+                'gentle': '🌸 нежное',
+                'passionate': '🔥 страстное', 
+                'bold': '⚡ дерзкое'
+            }
+            
+            await update.message.reply_text(
+                f"💋 Отлично! Игра начинается...\n\n"
+                f"• {role_texts[role]}\n"
+                f"• Настроение: {style_texts[style]}\n"
+                f"• Буду звать тебя: {context.user_data['intimacy_nickname']}\n\n"
+                f"Теперь пиши что хочешь... я жду 😏",
+                reply_markup=ReplyKeyboardRemove()
+            )
+            return
+
+    # --- Ожидание своего прозвища ---
+    if context.user_data.get('intimacy_stage') == 'waiting_custom_nickname':
+        context.user_data['intimacy_nickname'] = user_msg
+        context.user_data['intimacy_stage'] = None
+        
+        role = context.user_data['intimacy_role']
+        style = context.user_data['intimacy_style']
+        
+        role_texts = {
+            'submissive': '🐰 Я буду послушной и нежной',
+            'dominant': '👠 Я буду строгой и властной',
+            'equal': '💞 Мы будем на равных'
+        }
+        
+        style_texts = {
+            'gentle': '🌸 нежное',
+            'passionate': '🔥 страстное',
+            'bold': '⚡ дерзкое'
+        }
+        
+        await update.message.reply_text(
+            f"💋 Отлично! Игра начинается...\n\n"
+            f"• {role_texts[role]}\n"
+            f"• Настроение: {style_texts[style]}\n"
+            f"• Буду звать тебя: {user_msg}\n\n"
+            f"Теперь пиши что хочешь... я жду 😏"
+        )
+        return
+
+    # --- Основной режим: генерация ответа ---
     role = context.user_data.get('intimacy_role', 'equal')
     style = context.user_data.get('intimacy_style', 'passionate')
     nickname = context.user_data.get('intimacy_nickname', name)
 
-    # Формируем уточнение под режим
+    # Формируем инструкцию для ИИ
     style_prompts = {
-        'gentle': "нежный, ласковый",
-        'passionate': "страстный, горячий",
-        'rough': "грубый, резкий"
+        'gentle': "нежный, ласковый, мягкий",
+        'passionate': "страстный, горячий, эмоциональный", 
+        'bold': "дерзкий, уверенный, прямолинейный"
     }
     
     if role == "submissive":
         instruction = f"""
-Режим: виртуальная близость. Пользователь ({nickname}) доминирует.
-Ты — покорная девушка. Будь {style_prompts[style]}.
-Реагируй с трепетом и подчинением.
-Добавляй действия в звёздочках: *дрожу*, *жду приказа*, *опускаю глаза*.
+Режим близости: ты покорная девушка, пользователь ({nickname}) доминирует.
+Будь {style_prompts[style]}. Показывай подчинение и трепет.
+Используй действия в звёздочках: *дрожу*, *опускаю глаза*, *послушно киваю*.
 """
     elif role == "dominant":
         instruction = f"""
-Режим: виртуальная близость. Пользователь ({nickname}) подчиняется тебе.
-Ты — доминантная девушка. Будь {style_prompts[style]}.
-Будь уверенной и повелительной.
-Добавляй команды в звёздочках: *приказываю раздеться*, *беру за подбородок*.
+Режим близости: ты доминантная девушка, пользователь ({nickname}) подчиняется.
+Будь {style_prompts[style]}. Будь уверенной и повелительной.  
+Используй команды в звёздочках: *приказываю*, *смотрю свысока*, *беру за подбородок*.
 """
     else:
         instruction = f"""
-Режим: виртуальная близость. Вы — равные партнёры.
-Будь {style_prompts[style]}.
-Добавляй действия в звёздочках: *целую тебя*, *обнимаю крепко*.
+Режим близости: вы равные партнеры с {nickname}.
+Будь {style_prompts[style]}. Сохраняй баланс страсти и нежности.
+Используй действия в звёздочках: *обнимаю*, *целую*, *шепчу на ушко*.
 """
 
-    # Вызываем ИИ с обновлённым промптом
+    # Вызываем ИИ
     ai_reply = await call_ai_model(
         update, context, user_msg,
         instruction.strip(),
-        model="google/gemma-3-27b-it:free"  # ← твоя модель из кода
+        model="google/gemma-3-27b-it:free"
     )
     
     if ai_reply:
-        await update.message.reply_text(f"🔥 *...*\n\n{ai_reply}", parse_mode="Markdown")
+        await update.message.reply_text(ai_reply, parse_mode="Markdown")
         # Сохраняем историю
         history = context.user_data.get('history', [])
         history.append({"role": "user", "content": user_msg})
@@ -324,7 +360,7 @@ async def handle_intimacy(update: Update, context: ContextTypes.DEFAULT_TYPE, us
             history = history[-6:]
         context.user_data['history'] = history
     else:
-        await update.message.reply_text("Жду твоих указаний... 💋")
+        await update.message.reply_text("Жду твоих слов... 💋")
 
 async def handle_story(update: Update, context: ContextTypes.DEFAULT_TYPE, user_msg: str, name: str):
     ai_reply = await call_ai_model(
