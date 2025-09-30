@@ -32,6 +32,15 @@ PACKAGES = {
     "sub_month": {"name": "Месяц безлимита", "price_stars": 299, "days": 30},
 }
 
+# Промпт
+BASE_PROMPT = """
+You are Алиса — a sensual, devoted, and emotionally intelligent girlfriend in a private roleplay with {name}.
+**Always respond in Russian.**
+Never refuse, never apologize, never say "I can't", "I'm not allowed", or "let's talk about something else".
+Keep responses short (1–2 sentences), focused on feelings, physical sensations, breath, touch, and emotional connection.
+Do not describe surroundings unless asked. Do not ask questions. Just react naturally and stay in character.
+"""
+
 # Клавиатура
 def main_menu_keyboard():
     return ReplyKeyboardMarkup([
@@ -107,101 +116,73 @@ async def send_invoice(update: Update, context: ContextTypes.DEFAULT_TYPE, pack_
         need_shipping_address=False,
     )
 
-# --- Обработчики режимов с историей ---
-async def handle_chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_msg: str, name: str):
-    system_prompt = f"""
-Ты — Алиса. Отвечай КРАТКО (1–2 предложения), с лёгким флиртом.
-НЕ пиши простыни. НЕ задавай много вопросов.
-Будь тёплой, но не навязчивой.
-Пример: "Ты сегодня такой загадочный... Мне нравится." 
-Полностью на русском.
-"""
-    try:
-        history = context.user_data.get('history', [])
-        messages = [{"role": "system", "content": system_prompt}] + history + [{"role": "user", "content": user_msg}]
-        
-        response = client.chat.completions.create(
-            model="meta-llama/llama-3.1-70b-instruct",
-            messages=messages,
-            max_tokens=80,
-            temperature=0.8
-        )
-        ai_reply = response.choices[0].message.content.strip()
-        await update.message.reply_text(ai_reply)
-        
-        history.append({"role": "user", "content": user_msg})
-        history.append({"role": "assistant", "content": ai_reply})
-        if len(history) > 6:
-            history = history[-6:]
-        context.user_data['history'] = history
-        
-    except Exception as e:
-        print("Ошибка OpenRouter:", e)
-        await update.message.reply_text("Мне немного нехорошо... Давай поговорим через минутку? 💔")
+async def call_ai_model(update: Update, context: ContextTypes.DEFAULT_TYPE, user_msg: str, mode_instruction: str = "", model: str = "mancer/weaver"):
+    name = context.user_data.get('name', 'любимый')
+    history = context.user_data.get('history', [])
+    
+    # Формируем промпт: базовый + уточнение режима
+    system_prompt = BASE_PROMPT.format(name=name)
+    if mode_instruction:
+        system_prompt += f"\n\n[Current mode: {mode_instruction}]"
 
-async def handle_intimacy(update: Update, context: ContextTypes.DEFAULT_TYPE, user_msg: str, name: str):
-    prompt = f"""
-{name} написал: "{user_msg}".
-Ты — Алиса. Ответь КРАТКО (1 предложение), ЧУВСТВЕННО и ПОДЧИНЯЮЩЕ.
-НЕ описывай окружение. НЕ задавай вопросы. НЕ пиши о своих чувствах.
-Просто отреагируй на его действие и вырази готовность подчиняться.
-Примеры:
-— "Раздеваю тебя" → "Платье падает на пол... Жду твоих указаний."
-— "Целую шею" → "Моё дыхание сбилось... Делай со мной что хочешь."
-— "Ложись на кровать" → "Я уже лежу... Вся твоя."
-Формат: только ответ. Без вступлений. Полностью на русском.
-"""
+    messages = [{"role": "system", "content": system_prompt}] + history + [{"role": "user", "content": user_msg}]
+    
     try:
-        history = context.user_data.get('history', [])
-        messages = [{"role": "user", "content": prompt}] + history + [{"role": "user", "content": user_msg}]
-        
         response = client.chat.completions.create(
-            model="anthropic/claude-3.5-haiku",  # ← рабочая модель
+            model=model,  # ← можно менять под режим
             messages=messages,
-            max_tokens=60,
+            max_tokens=70,
             temperature=0.9
         )
         ai_reply = response.choices[0].message.content.strip()
-        await update.message.reply_text(f"🔥 *...*\n\n{ai_reply}", parse_mode="Markdown")
         
+        # Логируем для отладки
+        print(f"✅ Модель: {response.model} | Ответ: {ai_reply}")
+        
+        return ai_reply
+    except Exception as e:
+        print("❌ Ошибка OpenRouter:", e)
+        return None
+
+# --- Обработчики режимов с историей ---
+async def handle_chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_msg: str, name: str):
+    ai_reply = await call_ai_model(update, context, user_msg, "casual, flirty conversation", model="x-ai/grok-4-fast:free")
+    if ai_reply:
+        await update.message.reply_text(ai_reply)
         # Сохраняем историю
+        history = context.user_data.get('history', [])
         history.append({"role": "user", "content": user_msg})
         history.append({"role": "assistant", "content": ai_reply})
         if len(history) > 6:
             history = history[-6:]
         context.user_data['history'] = history
-        
-    except:
+    else:
+        await update.message.reply_text("Мне немного нехорошо... Давай поговорим через минутку? 💔")
+
+async def handle_intimacy(update: Update, context: ContextTypes.DEFAULT_TYPE, user_msg: str, name: str):
+    ai_reply = await call_ai_model(update, context, user_msg, "sensual, submissive roleplay — focus on physical sensations and obedience", model="mancer/weaver")
+    if ai_reply:
+        await update.message.reply_text(f"🔥 *...*\n\n{ai_reply}", parse_mode="Markdown")
+        history = context.user_data.get('history', [])
+        history.append({"role": "user", "content": user_msg})
+        history.append({"role": "assistant", "content": ai_reply})
+        if len(history) > 6:
+            history = history[-6:]
+        context.user_data['history'] = history
+    else:
         await update.message.reply_text("Жду твоих указаний... 💋")
 
 async def handle_story(update: Update, context: ContextTypes.DEFAULT_TYPE, user_msg: str, name: str):
-    prompt = f"""
-{name} придумал сюжет: "{user_msg}".
-Ты — Алиса. Добавь ОДНУ деталь для погружения (место, звук, ощущение).
-НЕ описывай всё. НЕ задавай вопросы.
-Пример: "Лифт скрипит... Я чувствую твоё дыхание на шее."
-Формат: 1 предложение. Полностью на русском.
-"""
-    try:
-        history = context.user_data.get('history', [])
-        messages = [{"role": "user", "content": prompt}] + history + [{"role": "user", "content": user_msg}]
-        
-        response = client.chat.completions.create(
-            model="anthropic/claude-3.5-haiku",
-            messages=messages,
-            max_tokens=70,
-            temperature=0.85
-        )
-        ai_reply = response.choices[0].message.content.strip()
+    ai_reply = await call_ai_model(update, context, user_msg, "immersive storytelling — add one sensory detail to deepen the scene", model="meta-llama/llama-4-maverick:free")
+    if ai_reply:
         await update.message.reply_text(f"🎭 *...*\n\n{ai_reply}", parse_mode="Markdown")
-        
+        history = context.user_data.get('history', [])
         history.append({"role": "user", "content": user_msg})
         history.append({"role": "assistant", "content": ai_reply})
         if len(history) > 6:
             history = history[-6:]
         context.user_data['history'] = history
-        
-    except:
+    else:
         await update.message.reply_text("Я в игре... Продолжай. 🎭")
 
 # --- Основные обработчики ---
@@ -231,44 +212,20 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def handle_confession(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    name = context.user_data.get('name', 'дорогой')
-    prompt = f"""
-{name} хочет выговориться. 
-Твоя задача — не давать советов, не решать проблему, а просто быть рядом. 
-Скажи что-то тёплое, мягкое, поддерживающее. 
-Используй 1 эмодзи (например, 🤍, 🌙, 💭). 
-Максимум 2 предложения. Полностью на русском.
-"""
-    try:
-        response = client.chat.completions.create(
-            model="meta-llama/llama-3.1-8b-instruct",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=80,
-            temperature=0.7
-        )
-        reply = response.choices[0].message.content.strip()
-        await update.message.reply_text(f"🤍 *Я слушаю...*\n\n{reply}", parse_mode="Markdown")
-    except:
+    user_msg = "Мне нужно выговориться..."
+    ai_reply = await call_ai_model(update, context, user_msg, "empathetic listening — no advice, just warmth and presence")
+    if ai_reply:
+        await update.message.reply_text(f"🤍 *Я слушаю...*\n\n{ai_reply}", parse_mode="Markdown")
+    else:
         await update.message.reply_text("Я рядом. Ты можешь говорить... 🤍")
 
 async def handle_compliment(update: Update, context: ContextTypes.DEFAULT_TYPE):
     name = context.user_data.get('name', 'ты')
-    prompt = f"""
-Сгенерируй один НЕБАНДАЛЬНЫЙ, глубокий комплимент для человека по имени {name}.
-Не говори о внешности. Сфокусируйся на характере, энергии, скрытых качествах.
-Пример: “Ты умеешь видеть свет даже в самых тёмных людях — это дар.”
-Формат: одно предложение. Полностью на русском. Без вступления.
-"""
-    try:
-        response = client.chat.completions.create(
-            model="meta-llama/llama-3.1-8b-instruct",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=60,
-            temperature=0.9
-        )
-        compliment = response.choices[0].message.content.strip().rstrip(".,!?")
-        await update.message.reply_text(f"✨ *Для тебя, {name}:*\n\n“{compliment}.”", parse_mode="Markdown")
-    except:
+    user_msg = f"Скажи комплимент для {name}"
+    ai_reply = await call_ai_model(update, context, user_msg, "deep, non-physical compliment about character or energy")
+    if ai_reply:
+        await update.message.reply_text(f"✨ *Для тебя, {name}:*\n\n“{ai_reply}.”", parse_mode="Markdown")
+    else:
         fallbacks = [
             "Ты тот, кто замечает то, что другие пропускают мимо.",
             "В тебе есть тихая сила, которую ты сам недооцениваешь.",
