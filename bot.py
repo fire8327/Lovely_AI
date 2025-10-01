@@ -188,8 +188,8 @@ async def handle_intimacy(update: Update, context: ContextTypes.DEFAULT_TYPE, us
             await update.message.reply_text(
                 "✨ Выбери настроение...",
                 reply_markup=ReplyKeyboardMarkup([
-                    ['🌸 Нежный', '🔥 Страстный'],
-                    ['⚡ Дерзкий'],
+                    ['🌸 Нежное', '🔥 Страстное'],
+                    ['⚡ Дерзкое'],
                     ['⬅️ Назад']
                 ], resize_keyboard=True)
             )
@@ -201,9 +201,9 @@ async def handle_intimacy(update: Update, context: ContextTypes.DEFAULT_TYPE, us
     # --- Обработка выбора стиля ---
     if context.user_data.get('intimacy_stage') == 'style':
         style_map = {
-            '🌸 Нежный': 'gentle',
-            '🔥 Страстный': 'passionate',
-            '⚡ Дерзкий': 'bold'
+            '🌸 Нежное': 'gentle',
+            '🔥 Страстное': 'passionate',
+            '⚡ Дерзкое': 'bold'
         }
         if user_msg in style_map:
             context.user_data['intimacy_style'] = style_map[user_msg]
