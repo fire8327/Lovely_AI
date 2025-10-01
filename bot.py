@@ -64,16 +64,23 @@ async def check_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> boo
     # Проверяем счётчик бесплатных сообщений
     count = user_info.get('message_count', 0)
     if count >= FREE_MESSAGE_LIMIT:
+        # Генерируем реферальную ссылку для кнопки
+        referral_link = f"https://t.me/ai_lovely_bot?start={user_id}" # Замените your_bot_name на имя вашего бота
+        keyboard = [
+            ['💎 50 сообщений — 75 ⭐'],
+            ['🌙 Неделя безлимита — 149 ⭐'],
+            ['🌟 Месяц безлимита — 299 ⭐'],
+            [f'🎁 Поделиться и получить +10 сообщений'], # Кнопка с призывом
+            ['⬅️ Назад']
+        ]
         await update.message.reply_text(
             "Мне так нравится с тобой разговаривать… Но моя энергия не бесконечна. 💫\n"
             "Хочешь продолжить?",
-            reply_markup=ReplyKeyboardMarkup([
-                ['💎 50 сообщений — 75 ⭐'],
-                ['🌙 Неделя безлимита — 149 ⭐'],
-                ['🌟 Месяц безлимита — 299 ⭐'],
-                ['⬅️ Назад']
-            ], resize_keyboard=True)
+            reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
         )
+        # ВАЖНО: Не возвращаем False, а просто показываем сообщение.
+        # Нам нужно обработать нажатие кнопки "Поделиться".
+        # Это можно сделать в main_menu_handler.
         return False
 
     # Увеличиваем счётчик в БД
@@ -495,21 +502,42 @@ async def main_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     intimacy_style = user_info.get('intimacy_style')
     intimacy_nickname = user_info.get('intimacy_nickname')
 
-    # Проверяем, не находится ли пользователь в процессе настройки близости
+    # --- ПРОВЕРКА: находится ли пользователь в процессе НАСТРОЙКИ близости ---
+    # Если intimacy_stage установлено в context.user_data, значит, настройка активна.
     if context.user_data.get('mode') == 'intimacy' and context.user_data.get('intimacy_stage'):
         # Если пользователь в процессе настройки близости, передаем сообщение в handle_intimacy
         name = context.user_data.get('name', 'любимый')
-        # Тут нужно передать и настройки из БД в handle_intimacy
         return await handle_intimacy(update, context, text, name, intimacy_role, intimacy_style, intimacy_nickname, user_id)
-    
+
+    # --- ПРОВЕРКА: находится ли пользователь в активном режиме близости ---
+    # Если mode == 'intimacy', и настройки есть, и intimacy_stage НЕТ, то это активный режим.
+    if context.user_data.get('mode') == 'intimacy' and intimacy_role and intimacy_style and intimacy_nickname and context.user_data.get('intimacy_stage') is None:
+        # Пользователь в активном режиме близости. Проверим, не хочет ли он выйти.
+        if text == '⏹️ Остановить диалог':
+            # Сбрасываем режим в context.user_data
+            context.user_data['mode'] = 'chat'
+            # Сбрасываем настройки в БД (опционально, если хочешь, чтобы при следующем входе снова настраивал)
+            # db.update_user_intimacy_settings(user_id, role=None, style=None, nickname=None)
+            await update.message.reply_text(
+                "Диалог остановлен. 💤\nЯ всегда здесь, когда захочешь вернуться.",
+                reply_markup=main_menu_keyboard()
+            )
+            return
+        else:
+            # Если сообщение не "остановить", передаём в handle_intimacy как активный режим
+            name = context.user_data.get('name', 'любимый')
+            return await handle_intimacy(update, context, text, name, intimacy_role, intimacy_style, intimacy_nickname, user_id)
+
+    # --- ОБРАБОТКА КНОПОК ГЛАВНОГО МЕНЮ ---
+    # Теперь, когда активные/настраивающиеся режимы обработаны, проверяем кнопки меню.
     if text == '⏹️ Остановить диалог':
-        # Сбрасываем настройки в context.user_data
+        # Сбрасываем режим в context.user_data
         context.user_data.update({
             'mode': 'chat',
             'intimacy_stage': None
         })
-        # Сбрасываем в БД
-        db.update_user_intimacy_settings(user_id, role=None, style=None, nickname=None)
+        # Сбрасываем настройки в БД (опционально)
+        # db.update_user_intimacy_settings(user_id, role=None, style=None, nickname=None)
         await update.message.reply_text(
             "Диалог остановлен. 💤\nЯ всегда здесь, когда захочешь вернуться.",
             reply_markup=main_menu_keyboard()
@@ -526,7 +554,10 @@ async def main_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         # Проверяем, установлены ли уже настройки близости в БД
         if intimacy_role and intimacy_style and intimacy_nickname:
-            # Если настройки уже есть, сразу переходим в режим общения
+            # Если настройки уже есть, сразу переходим в активный режим общения
+            # и сбрасываем возможный старый intimacy_stage
+            context.user_data['intimacy_stage'] = None
+            
             role_texts = {
                 'submissive': '🐰 Я послушная и нежная',
                 'dominant': '👠 Я строгая и властная', 
@@ -545,13 +576,10 @@ async def main_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"• Настроение: {style_texts[intimacy_style]}\n"
                 f"• Буду звать тебя: {intimacy_nickname}\n\n"
                 f"Пиши что хочешь... я жду 😏",
-                reply_markup=ReplyKeyboardRemove()
+                reply_markup=stop_dialog_keyboard() # Показываем клавиатуру с "остановить"
             )
         else:
             # Если настроек нет, начинаем процесс настройки
-            # context.user_data['intimacy_role'] = None # Не нужно
-            # context.user_data['intimacy_style'] = None
-            # context.user_data['intimacy_nickname'] = None
             context.user_data['intimacy_stage'] = 'role'  # Явно устанавливаем этап
             
             await update.message.reply_text(
@@ -563,10 +591,60 @@ async def main_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ], resize_keyboard=True)
             )
         return
-    # ... (остальные кнопки меню остаются без изменений) ...
+    elif text == '🎭 Сюжет':
+        context.user_data['mode'] = 'story'
+        await update.message.reply_text(
+            "Придумай нашу историю... 🎭\n"
+            "Например: *Мы в лифте, застряли одни*, или *Ты моя соседка, и я принёс тебе вино...*"
+        )
+        return
+    elif text == '🤍 Исповедь':
+        return await handle_confession(update, context)
+    elif text == '💎 Комплимент':
+        return await handle_compliment(update, context)
+    elif text == '⭐ Профиль':
+        return await show_profile(update, context)
+    elif text == '🛍️ Пополнить':
+        return await show_packages(update, context)
+    elif text == '⬅️ Назад':
+        await update.message.reply_text("Возвращаю в меню...", reply_markup=main_menu_keyboard())
+        return
+    elif text in ['💎 50 сообщений — 75 ⭐', '🌙 Неделя безлимита — 149 ⭐', '🌟 Месяц безлимита — 299 ⭐']:
+        if '50' in text:
+            return await send_invoice(update, context, "pack_50")
+        elif 'Неделя' in text:
+            return await send_invoice(update, context, "sub_week")
+        else:
+            return await send_invoice(update, context, "sub_month")
+    elif text == '🎁 Поделиться и получить +10 сообщений':
+        user_id = update.message.from_user.id
+        referral_link = f"https://t.me/ai_lovely_bot?start={user_id}"
+        await update.message.reply_text(
+            f"Поделись этой ссылкой с другом и получи +10 сообщений, когда он присоединится! 💝\n\n"
+            f"`{referral_link}`",
+            parse_mode="Markdown",
+            reply_markup=ReplyKeyboardMarkup([
+                ['💎 50 сообщений — 75 ⭐'],
+                ['🌙 Неделя безлимита — 149 ⭐'],
+                ['🌟 Месяц безлимита — 299 ⭐'],
+                ['⬅️ Назад']
+            ], resize_keyboard=True) # Возвращаем ту же клавиатуру
+        )
+        return
     else:
-        # Если не основная кнопка меню, передаем в обработчик по режиму
-        return await handle_message_by_mode(update, context, user_id) # Передаём user_id
+        # Если текст не совпадает ни с одной кнопкой меню, передаём в обработчик по режиму
+        # Это нужно, если пользователь, например, в режиме "Просто общение" просто пишет сообщение
+        return await handle_message_by_mode(update, context, user_id)
+
+async def invite(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    referral_link = f"https://t.me/ai_lovely_bot?start={user_id}"
+    
+    await update.message.reply_text(
+        f"Поделись этой ссылкой с другом и получи +10 сообщений, когда он присоединится! 💝\n\n"
+        f"`{referral_link}`",
+        parse_mode="Markdown" # Чтобы ссылка была скопирована целиком
+    )
 
 async def handle_message_by_mode(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: int):
     mode = context.user_data.get('mode', 'chat')
