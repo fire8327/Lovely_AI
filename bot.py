@@ -65,8 +65,6 @@ async def check_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> boo
     # Проверяем счётчик бесплатных сообщений
     count = user_info.get('message_count', 0)
     if count >= FREE_MESSAGE_LIMIT:
-        # Генерируем реферальную ссылку для кнопки
-        referral_link = f"https://t.me/ai_lovely_bot?start={user_id}" # Замените your_bot_name на имя вашего бота
         keyboard = [
             ['💎 50 сообщений — 75 ⭐'],
             ['🌙 Неделя безлимита — 149 ⭐'],
@@ -607,13 +605,15 @@ async def main_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await show_profile(update, context)
     elif text == '🛍️ Пополнить':
         return await show_packages(update, context)
-    elif text == '🎁 Пригласить друга': # Добавлено
+    elif text == '🎁 Пригласить друга': # Обновлено
         user_id = update.message.from_user.id
         referral_link = f"https://t.me/ai_lovely_bot?start={user_id}"
         await update.message.reply_text(
-            f"Поделись этой ссылкой с другом и получи +10 сообщений, когда он присоединится! 💝\n\n"
-            f"`{referral_link}`",
-            parse_mode="Markdown",
+            f"Поделись этой ссылкой с другом и получи +10 сообщений, когда он присоединится! 💝"
+        )
+        # Отправляем ссылку отдельным сообщением
+        await update.message.reply_text(
+            referral_link,
             reply_markup=main_menu_keyboard() # Возвращаемся в меню
         )
         return
@@ -631,9 +631,11 @@ async def main_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_id = update.message.from_user.id
         referral_link = f"https://t.me/ai_lovely_bot?start={user_id}"
         await update.message.reply_text(
-            f"Поделись этой ссылкой с другом и получи +10 сообщений, когда он присоединится! 💝\n\n"
-            f"`{referral_link}`",
-            parse_mode="Markdown",
+            f"Поделись этой ссылкой с другом и получи +10 сообщений, когда он присоединится! 💝"
+        )
+        # Отправляем ссылку отдельным сообщением
+        await update.message.reply_text(
+            referral_link,
             reply_markup=ReplyKeyboardMarkup([
                 ['💎 50 сообщений — 75 ⭐'],
                 ['🌙 Неделя безлимита — 149 ⭐'],
@@ -652,9 +654,11 @@ async def invite(update: Update, context: ContextTypes.DEFAULT_TYPE):
     referral_link = f"https://t.me/ai_lovely_bot?start={user_id}"
     
     await update.message.reply_text(
-        f"Поделись этой ссылкой с другом и получи +10 сообщений, когда он присоединится! 💝\n\n"
-        f"`{referral_link}`",
-        parse_mode="Markdown" # Чтобы ссылка была скопирована целиком
+        f"Поделись этой ссылкой с другом и получи +10 сообщений, когда он присоединится! 💝"
+    )
+    # Отправляем ссылку отдельным сообщением
+    await update.message.reply_text(
+        referral_link
     )
 
 async def handle_message_by_mode(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: int):
