@@ -48,7 +48,8 @@ def main_menu_keyboard():
         ['💬 Просто общение', '🔥 Виртуальная близость'],
         ['🎭 Сюжет', '🤍 Исповедь'],
         ['💎 Комплимент', '⭐ Профиль'],
-        ['🛍️ Пополнить']
+        ['🛍️ Пополнить'],
+        ['🎁 Пригласить друга']
     ], resize_keyboard=True)
 
 # --- Вспомогательные функции ---
@@ -606,6 +607,16 @@ async def main_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await show_profile(update, context)
     elif text == '🛍️ Пополнить':
         return await show_packages(update, context)
+    elif text == '🎁 Пригласить друга': # Добавлено
+        user_id = update.message.from_user.id
+        referral_link = f"https://t.me/ai_lovely_bot?start={user_id}"
+        await update.message.reply_text(
+            f"Поделись этой ссылкой с другом и получи +10 сообщений, когда он присоединится! 💝\n\n"
+            f"`{referral_link}`",
+            parse_mode="Markdown",
+            reply_markup=main_menu_keyboard() # Возвращаемся в меню
+        )
+        return
     elif text == '⬅️ Назад':
         await update.message.reply_text("Возвращаю в меню...", reply_markup=main_menu_keyboard())
         return
