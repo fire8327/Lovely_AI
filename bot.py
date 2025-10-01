@@ -154,7 +154,10 @@ async def handle_chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_m
         model="google/gemma-3-27b-it:free"
     )
     if ai_reply:
-        await update.message.reply_text(ai_reply)
+        await update.message.reply_text(
+            ai_reply,
+            reply_markup=stop_dialog_keyboard()
+        )
         history = context.user_data.get('history', [])
         history.append({"role": "user", "content": user_msg})
         history.append({"role": "assistant", "content": ai_reply})
@@ -346,7 +349,11 @@ async def handle_intimacy(update: Update, context: ContextTypes.DEFAULT_TYPE, us
     )
     
     if ai_reply:
-        await update.message.reply_text(ai_reply, parse_mode="Markdown")
+        await update.message.reply_text(
+            ai_reply,
+            parse_mode="Markdown",
+            reply_markup=stop_dialog_keyboard()
+        )
         # Сохраняем историю
         history = context.user_data.get('history', [])
         history.append({"role": "user", "content": user_msg})
@@ -365,7 +372,11 @@ async def handle_story(update: Update, context: ContextTypes.DEFAULT_TYPE, user_
         model="meta-llama/llama-4-maverick:free"
     )
     if ai_reply:
-        await update.message.reply_text(f"🎭 *...*\n\n{ai_reply}", parse_mode="Markdown")
+        await update.message.reply_text(
+            f"🎭 *...*\n\n{ai_reply}",
+            parse_mode="Markdown",
+            reply_markup=stop_dialog_keyboard()
+        )
         history = context.user_data.get('history', [])
         history.append({"role": "user", "content": user_msg})
         history.append({"role": "assistant", "content": ai_reply})
@@ -401,6 +412,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="Markdown"
     )
 
+def stop_dialog_keyboard():
+    return ReplyKeyboardMarkup([['⏹️ Остановить диалог']], resize_keyboard=True)
+
 async def handle_confession(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_msg = "Мне нужно выговориться..."
     ai_reply = await call_ai_model(update, context, user_msg, "empathetic listening — no advice, just warmth and presence")
@@ -434,8 +448,21 @@ async def main_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         name = context.user_data.get('name', 'любимый')
         return await handle_intimacy(update, context, text, name)
     
+    if text == '⏹️ Остановить диалог':
+        context.user_data.update({
+            'mode': 'chat',
+            'intimacy_role': None,
+            'intimacy_style': None,
+            'intimacy_nickname': None,
+            'intimacy_stage': None
+        })
+        await update.message.reply_text(
+            "Диалог остановлен. 💤\nЯ всегда здесь, когда захочешь вернуться.",
+            reply_markup=main_menu_keyboard()
+        )
+        return
     # Затем обрабатываем основные кнопки меню
-    if text == '💬 Просто общение':
+    elif text == '💬 Просто общение':
         context.user_data['mode'] = 'chat'
         await update.message.reply_text("Хорошо... Просто говори со мной. 💬")
         return
